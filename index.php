@@ -154,3 +154,4 @@ function actualizarTotal(id, precio) {
 
 </body>
 </html>
+
