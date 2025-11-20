@@ -1,4 +1,7 @@
-<!-- <?php include('conexion.php'); ?> -->
+<?php
+session_start();
+include('barra_sup.php');
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -51,20 +54,9 @@ body { display:block !important; padding-top:120px; }
 .producto img { width:100%; height:130px; object-fit:cover; border-radius:8px; }
 .producto h4 { font-size:16px; color:#1f2937; margin:8px 0 4px; }
 .producto p { color:#555; font-size:14px; margin:2px 0; }
-
-/* 🔹 CANTIDAD Y CARRITO */
-.cantidad-container { display:flex; align-items:center; justify-content:center; margin-top:8px; }
-.cantidad-btn { background-color:#2563eb; color:white; border:none; border-radius:6px; width:30px; height:30px; font-size:20px; cursor:pointer; margin:0 2px; }
-.cantidad-btn:hover { background-color:#1e40af; }
-.cantidad-input { width:50px; text-align:center; font-size:16px; border:1px solid #ccc; border-radius:6px; margin:0 5px; padding:3px; }
-.total { margin-top:6px; font-size:15px; color:#1e293b; }
-.btn-carrito { background-color:#16a34a; color:white; border:none; padding:8px 12px; border-radius:8px; font-weight:600; cursor:pointer; margin-top:10px; transition:background 0.3s, transform 0.2s; }
-.btn-carrito:hover { background-color:#15803d; transform:translateY(-2px); }
 </style>
 </head>
 <body>
-
-<!-- <?php include('barra_sup.php'); ?> -->
 
 <div class="bienvenida">
   <h1>Bienvenido a <span>BoliviaMarket</span> 🇧🇴</h1>
@@ -116,38 +108,7 @@ function mostrarProductos(sector) {
 function cerrarModal() {
   document.getElementById('modalProductos').style.display = 'none';
 }
-
-// BOTONES DE CANTIDAD Y CARRITO
-document.addEventListener('click', function(e) {
-  if (e.target.classList.contains('cantidad-btn')) {
-    const id = e.target.dataset.id;
-    const precio = parseFloat(e.target.dataset.precio);
-    const accion = e.target.dataset.accion;
-    const input = document.getElementById('cantidad_' + id);
-    let valor = parseInt(input.value) || 1;
-    if (accion === '+') valor += 1;
-    if (accion === '-') valor = Math.max(1, valor - 1);
-    input.value = valor;
-    actualizarTotal(id, precio);
-  }
-
-  if (e.target.classList.contains('btn-carrito')) {
-    const id = e.target.dataset.id;
-    const nombre = e.target.dataset.nombre;
-    const precio = parseFloat(e.target.dataset.precio);
-    const cantidad = parseInt(document.getElementById('cantidad_' + id).value);
-    const total = (cantidad * precio).toFixed(2);
-    alert(`Producto añadido:\n\n${nombre}\nCantidad: ${cantidad}\nTotal: Bs. ${total}`);
-  }
-});
-
-function actualizarTotal(id, precio) {
-  const cantidad = parseInt(document.getElementById('cantidad_' + id).value) || 1;
-  const total = (cantidad * precio).toFixed(2);
-  document.querySelector('#total_' + id + ' span').textContent = total;
-}
 </script>
 
 </body>
 </html>
-

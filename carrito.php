@@ -1,7 +1,6 @@
 <?php
 session_start();
-include('barra_sup.php'); // si te da problema, puedes comentarlo temporalmente
-// include('conexion.php'); // por ahora no es necesario para el carrito
+//include('barra_sup.php'); 
 
 // Inicializar carrito en sesión
 if (!isset($_SESSION['carrito'])) {
