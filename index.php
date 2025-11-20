@@ -113,9 +113,19 @@ body {
         <div class="tarjeta-texto">Hortalizas</div>
     </div>
 
+    <div class="tarjeta" onclick="window.location.href='hortalizas.php'">
+        <img src="imagenes/frutas.jpg">
+        <div class="tarjeta-texto">Frutas</div>
+    </div>
+
     <div class="tarjeta" onclick="window.location.href='bebidas.php'">
-        <img src="imagenes/bebida.jpg">
+        <img src="imagenes/bebidas.jpg">
         <div class="tarjeta-texto">Bebidas</div>
+    </div>
+
+    <div class="tarjeta" onclick="window.location.href='bebidas.php'">
+        <img src="imagenes/lacteos.jpg">
+        <div class="tarjeta-texto">Lácteos y huevos</div>
     </div>
 
     <div class="tarjeta" onclick="window.location.href='alimentos.php'">
