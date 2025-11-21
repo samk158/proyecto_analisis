@@ -1,20 +1,19 @@
 <?php
 session_start();
 
-// ------- PROCESAR AGREGAR DESDE AJAX -------
-if ($_SERVER['REQUEST_METHOD'] === 'POST' 
-    && isset($_POST['accion']) 
-    && $_POST['accion'] === 'agregar'
+// AGREGAR DESDE AJAX
+if ($_SERVER['REQUEST_METHOD'] === 'POST'
+    && ($_POST['accion'] ?? '') === 'agregar'
     && !empty($_POST['id'])) {
 
     if (!isset($_SESSION['carrito'])) {
         $_SESSION['carrito'] = [];
     }
 
-    $id       = $_POST['id'];
+    $id       = (int)$_POST['id'];
     $nombre   = $_POST['nombre'];
-    $precio   = floatval($_POST['precio']);
-    $cantidad = intval($_POST['cantidad']);
+    $precio   = (float)$_POST['precio'];
+    $cantidad = (int)$_POST['cantidad'];
     $unidad   = $_POST['unidad'];
     $imagen   = $_POST['imagen'];
 
@@ -30,20 +29,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
         $_SESSION['carrito'][$id]["cantidad"] += $cantidad;
     }
 
-    echo "OK"; // SOLO PARA AJAX
+    echo "OK";
     exit;
 }
 
+// CONTADOR PARA ICONO (si lo usas)
+if (isset($_GET['contador'])) {
+    $n = 0;
+    if (!empty($_SESSION['carrito'])) {
+        foreach($_SESSION['carrito'] as $it){
+            $n += $it['cantidad'];
+        }
+    }
+    echo $n;
+    exit;
+}
 
-// ------- INICIALIZAR CARRITO -------
 if (!isset($_SESSION['carrito'])) {
     $_SESSION['carrito'] = [];
 }
 
-
-// ------- PROCESAR ELIMINAR O VACIAR -------
+// ELIMINAR / VACIAR
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
     $accion = $_POST['accion'] ?? '';
 
     if ($accion === 'eliminar') {
@@ -51,7 +58,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: carrito.php");
         exit;
     }
-
     if ($accion === 'vaciar') {
         $_SESSION['carrito'] = [];
         header("Location: carrito.php");
@@ -59,8 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-
-// ------- CALCULAR TOTAL -------
+// TOTAL
 $total = 0;
 foreach ($_SESSION['carrito'] as $p) {
     $total += $p['precio'] * $p['cantidad'];
@@ -72,13 +77,8 @@ foreach ($_SESSION['carrito'] as $p) {
 <meta charset="UTF-8">
 <title>Carrito</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-
 <style>
-body{
-    font-family:'Poppins';
-    background:#f3f4f6;
-    padding:40px;
-}
+body{font-family:'Poppins';background:#f3f4f6;padding:40px;}
 .carrito{
     background:white;
     padding:25px;
@@ -100,46 +100,11 @@ body{
     object-fit:cover;
     border-radius:8px;
 }
-.btn-eliminar{
-    background:#dc2626;
-    color:white;
-    border:none;
-    padding:8px 14px;
-    border-radius:8px;
-    cursor:pointer;
-}
-.btn-volver{
-    background:#2563eb;
-    color:white;
-    padding:10px 20px;
-    border:none;
-    border-radius:8px;
-    font-weight:bold;
-    cursor:pointer;
-}
-.btn-vaciar{
-    background:#475569;
-    color:white;
-    padding:10px 20px;
-    border:none;
-    border-radius:8px;
-    font-weight:bold;
-    cursor:pointer;
-}
-.btn-pago{
-    background:#16a34a;
-    color:white;
-    padding:12px 22px;
-    border:none;
-    border-radius:8px;
-    font-weight:bold;
-    cursor:pointer;
-}
-.botones{
-    display:flex;
-    justify-content:space-between;
-    margin-top:20px;
-}
+.btn-eliminar{background:#dc2626;color:white;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;}
+.btn-volver{background:#2563eb;color:white;padding:10px 20px;border:none;border-radius:8px;font-weight:bold;cursor:pointer;}
+.btn-vaciar{background:#475569;color:white;padding:10px 20px;border:none;border-radius:8px;font-weight:bold;cursor:pointer;}
+.btn-pago{background:#16a34a;color:white;padding:12px 22px;border:none;border-radius:8px;font-weight:bold;cursor:pointer;}
+.botones{display:flex;justify-content:space-between;margin-top:20px;}
 </style>
 </head>
 <body>
@@ -147,36 +112,27 @@ body{
 <h1 style="text-align:center;">🛒 Tu Carrito</h1>
 
 <div class="carrito">
-
 <?php if(empty($_SESSION['carrito'])): ?>
     <p>No tienes productos en el carrito.</p>
     <button class="btn-volver" onclick="window.location.href='hortalizas.php'">
         🛒 Volver a compras
     </button>
-
 <?php else: ?>
-
     <?php foreach($_SESSION['carrito'] as $id=>$p): ?>
         <div class="item">
-
-            <img src="<?= $p['imagen'] ?>">
-
+            <img src="<?= htmlspecialchars($p['imagen']) ?>">
             <div style="flex:1;">
-                <h3><?= $p['nombre'] ?></h3>
-
-                <p><b>Unidad:</b> <?= $p['unidad'] ?></p>
+                <h3><?= htmlspecialchars($p['nombre']) ?></h3>
+                <p><b>Unidad:</b> <?= htmlspecialchars($p['unidad']) ?></p>
                 <p><b>Precio:</b> Bs. <?= number_format($p['precio'],2) ?></p>
                 <p><b>Cantidad:</b> <?= $p['cantidad'] ?></p>
-
                 <p><b>Subtotal:</b> Bs. <?= number_format($p['precio'] * $p['cantidad'],2) ?></p>
             </div>
-
             <form method="POST">
                 <input type="hidden" name="accion" value="eliminar">
                 <input type="hidden" name="id" value="<?= $id ?>">
                 <button class="btn-eliminar">Eliminar</button>
             </form>
-
         </div>
     <?php endforeach; ?>
 
@@ -185,22 +141,14 @@ body{
     </h3>
 
     <div class="botones">
-        <button class="btn-volver" onclick="window.location.href='hortalizas.php'">
-            ⬅ Volver a compras
-        </button>
-
+        <button class="btn-volver" onclick="window.location.href='hortalizas.php'">⬅ Volver a compras</button>
         <form method="POST">
             <input type="hidden" name="accion" value="vaciar">
             <button class="btn-vaciar">Vaciar carrito</button>
         </form>
-
-        <button class="btn-pago" onclick="window.location.href='checkout.php'">
-            Proceder al Pago
-        </button>
+        <button class="btn-pago" onclick="window.location.href='checkout.php'">Proceder al Pago</button>
     </div>
-
 <?php endif; ?>
-
 </div>
 
 </body>

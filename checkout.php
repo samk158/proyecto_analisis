@@ -1,7 +1,7 @@
 <?php
 session_start();
+include('conexion.php');
 
-// Si el carrito está vacío, regresar
 if (!isset($_SESSION['carrito']) || empty($_SESSION['carrito'])) {
     echo "<script>alert('Tu carrito está vacío'); window.location='carrito.php';</script>";
     exit;
@@ -13,31 +13,81 @@ foreach ($_SESSION['carrito'] as $item) {
     $total += $item['precio'] * $item['cantidad'];
 }
 
-// Procesar pedido (solo interfaz)
+// Procesar pedido
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $codigoOrden = "ORD" . rand(1000, 9999);
-
+    $nombre   = mysqli_real_escape_string($conexion, $_POST['nombre']);
+    $telefono = mysqli_real_escape_string($conexion, $_POST['telefono']);
     $modoEntrega = $_POST['modo'];
 
-    $direccion = ($modoEntrega === "delivery") ? $_POST['direccion'] : "Recojo en tienda - SIN DIRECCIÓN";
+    // si es delivery, dirección del formulario; si no, texto fijo
+    $direccion_form = ($modoEntrega === "delivery")
+        ? mysqli_real_escape_string($conexion, $_POST['direccion'])
+        : "Recojo en tienda - SIN DIRECCIÓN";
 
+    // 1) Obtener o crear cliente
+    if (isset($_SESSION['id_cliente'])) {
+        $id_cliente = (int)$_SESSION['id_cliente'];
+    } else {
+        $codigo_cliente = "cli".time();
+
+        $sqlNuevo = "INSERT INTO clientes (nombre, telefono, correo, codigo_cliente, direccion_entrega)
+                     VALUES ('$nombre','$telefono','','$codigo_cliente','$direccion_form')";
+        mysqli_query($conexion, $sqlNuevo);
+        $id_cliente = mysqli_insert_id($conexion);
+
+        $_SESSION['id_cliente'] = $id_cliente;
+        $_SESSION['codigo']     = $codigo_cliente;
+    }
+
+    // 2) Insertar venta
+    $sqlVenta = "INSERT INTO ventas (id_cliente, total, estado, estado_entrega)
+                 VALUES ($id_cliente, $total, 'pendiente', 'Pendiente')";
+    mysqli_query($conexion, $sqlVenta);
+    $id_venta = mysqli_insert_id($conexion);
+
+    // 3) Insertar detalle_ventas + seguimiento_pedidos
+    $codigo_cliente = $_SESSION['codigo'] ?? '';
+
+    foreach ($_SESSION['carrito'] as $id_prod => $it) {
+
+        $id_prod   = (int)$id_prod;
+        $cantidad  = (int)$it['cantidad'];
+        $precio    = (float)$it['precio'];
+
+        mysqli_query($conexion,
+            "INSERT INTO detalle_ventas (id_venta,id_producto,cantidad,precio)
+             VALUES ($id_venta,$id_prod,$cantidad,$precio)");
+
+        // obtener vendedor del producto
+        $resP = mysqli_query($conexion,
+            "SELECT codigo_vendedor FROM productos WHERE id=$id_prod LIMIT 1");
+        $rowP = mysqli_fetch_assoc($resP);
+        $codigo_vendedor = $rowP['codigo_vendedor'] ?? '';
+
+        mysqli_query($conexion,
+            "INSERT INTO seguimiento_pedidos (id_venta,id_producto,codigo_vendedor,codigo_cliente,estado)
+             VALUES ($id_venta,$id_prod,'$codigo_vendedor','$codigo_cliente','Pendiente')");
+    }
+
+    // 4) Guardar orden en sesión (para mostrar bonito)
     $_SESSION['orden'] = [
-        'codigo' => $codigoOrden,
-        'fecha' => date("Y-m-d H:i:s"),
-        'cliente' => $_POST['nombre'],
-        'telefono' => $_POST['telefono'],
-        'direccion' => $direccion,
-        'modo' => $modoEntrega,
-        'items' => $_SESSION['carrito'],
-        'total' => $total,
-        'estado' => 'PENDIENTE'
+        'id_venta'  => $id_venta,
+        'codigo'    => "ORD".$id_venta,
+        'fecha'     => date("Y-m-d H:i:s"),
+        'cliente'   => $nombre,
+        'telefono'  => $telefono,
+        'direccion' => $direccion_form,
+        'modo'      => $modoEntrega,
+        'items'     => $_SESSION['carrito'],
+        'total'     => $total,
+        'estado'    => 'PENDIENTE'
     ];
 
     // Vaciar carrito
     $_SESSION['carrito'] = [];
 
-    header("Location: orden_entrega.php");
+    header("Location: orden_entrega.php?id_venta=".$id_venta);
     exit;
 }
 ?>
@@ -47,94 +97,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta charset="UTF-8">
 <title>Checkout | BoliviaMarket</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-
 <style>
-body{
-    font-family:'Poppins',sans-serif;
-    background:#eef2f7;
-    margin:0;
-    padding:30px;
-}
-
+body{font-family:'Poppins',sans-serif;background:#f3f4f6;margin:0;padding:20px;}
 .container{
-    max-width:750px;
-    margin:0 auto;
-    background:white;
-    padding:35px;
-    border-radius:18px;
-    box-shadow:0 10px 35px rgba(0,0,0,0.12);
+    max-width:700px;margin:0 auto;background:white;
+    padding:25px;border-radius:15px;box-shadow:0 8px 25px rgba(0,0,0,0.1);
 }
-
-h2{
-    text-align:center;
-    font-size:2rem;
-    margin-bottom:20px;
-    color:#1e293b;
-}
-
-h3{
-    margin-top:25px;
-    color:#1e293b;
-}
-
-.item{
-    border-bottom:1px solid #ddd;
-    padding:10px 0;
-}
-
-label{
-    font-weight:600;
-}
-
+h2{text-align:center;margin-bottom:10px;}
+h3{margin-top:25px;}
+.item{border-bottom:1px solid #ddd;padding:10px 0;}
+label{font-weight:600;}
 input, textarea{
-    width:100%;
-    padding:12px;
-    border:1px solid #cbd5e1;
-    border-radius:10px;
-    margin-top:5px;
-    font-size:1rem;
-    outline:none;
+    width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;margin-top:5px;
 }
-
-input:focus, textarea:focus{
-    border-color:#2563eb;
-    box-shadow:0 0 5px rgba(37,99,235,0.4);
-}
-
 button{
-    margin-top:25px;
-    width:100%;
-    padding:15px;
-    background:#2563eb;
-    border:none;
-    color:white;
-    font-size:17px;
-    border-radius:12px;
-    cursor:pointer;
-    font-weight:600;
-    transition:0.2s;
+    margin-top:20px;width:100%;padding:12px;background:#2563eb;border:none;
+    color:white;font-size:16px;border-radius:10px;cursor:pointer;font-weight:600;
 }
-
-button:hover{
-    background:#1e40af;
-}
-
-.radio-box{
-    display:flex;
-    gap:25px;
-    margin-top:10px;
-}
-
-.opcion{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    font-weight:600;
-}
-
-#cajaDireccion{
-    margin-top:10px;
-}
+button:hover{background:#1e40af;}
+.radio-box{display:flex;gap:20px;margin-top:10px;}
+.opcion{display:flex;align-items:center;gap:8px;font-weight:600;}
 </style>
 </head>
 <body>
@@ -142,7 +124,6 @@ button:hover{
 <div class="container">
     <h2>Confirmar Pedido</h2>
 
-    <!-- Productos -->
     <h3>🛒 Productos</h3>
     <?php foreach($_SESSION['carrito'] as $item): ?>
         <div class="item">
@@ -152,26 +133,22 @@ button:hover{
         </div>
     <?php endforeach; ?>
 
-    <h3>Total a pagar: <span style="color:green; font-weight:bold;">Bs. <?= number_format($total,2) ?></span></h3>
+    <h3>Total a pagar: <span style="color:green;">Bs. <?= number_format($total,2) ?></span></h3>
 
-    <!-- Método de Entrega -->
     <h3>📦 Método de entrega</h3>
 
     <form method="POST">
-
         <div class="radio-box">
             <label class="opcion">
                 <input type="radio" name="modo" value="delivery" checked onclick="mostrarDireccion(true)">
                 Delivery
             </label>
-
             <label class="opcion">
                 <input type="radio" name="modo" value="tienda" onclick="mostrarDireccion(false)">
                 Recojo en tienda
             </label>
         </div>
 
-        <!-- Datos del Cliente -->
         <h3>👤 Datos del cliente</h3>
 
         <label>Nombre completo</label>
@@ -191,16 +168,7 @@ button:hover{
 
 <script>
 function mostrarDireccion(mostrar){
-    const caja = document.getElementById("cajaDireccion");
-    const direccion = caja.querySelector("textarea");
-
-    if(mostrar){
-        caja.style.display = "block";
-        direccion.required = true;
-    } else {
-        caja.style.display = "none";
-        direccion.required = false;
-    }
+    document.getElementById("cajaDireccion").style.display = mostrar ? "block" : "none";
 }
 </script>
 

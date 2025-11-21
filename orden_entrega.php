@@ -1,12 +1,50 @@
 <?php
 session_start();
+include('conexion.php');
 
-if (!isset($_SESSION['orden'])) {
+if (!isset($_SESSION['orden']) && !isset($_GET['id_venta'])) {
     echo "<script>alert('No hay orden generada'); window.location='index.php';</script>";
     exit;
 }
 
-$orden = $_SESSION['orden'];
+if (isset($_GET['id_venta'])) {
+    $id_venta = (int)$_GET['id_venta'];
+
+    // Datos de venta + cliente
+    $sqlV = "SELECT v.*, c.nombre, c.telefono, c.direccion_entrega
+             FROM ventas v
+             JOIN clientes c ON v.id_cliente = c.id
+             WHERE v.id = $id_venta";
+    $resV = mysqli_query($conexion, $sqlV);
+    $v = mysqli_fetch_assoc($resV);
+
+    // Items
+    $items = [];
+    $resD = mysqli_query($conexion,
+        "SELECT d.*, p.nombre 
+         FROM detalle_ventas d
+         JOIN productos p ON p.id = d.id_producto
+         WHERE d.id_venta = $id_venta");
+    while($row = mysqli_fetch_assoc($resD)){
+        $items[] = $row;
+    }
+
+    $orden = [
+        'codigo'   => "ORD".$id_venta,
+        'fecha'    => $v['fecha'],
+        'cliente'  => $v['nombre'],
+        'telefono' => $v['telefono'],
+        'direccion'=> $v['direccion_entrega'],
+        'estado'   => $v['estado_entrega'],
+        'total'    => $v['total'],
+        'items'    => $items
+    ];
+
+} else {
+    // desde sesión
+    $orden = $_SESSION['orden'];
+    $orden['codigo'] = $orden['codigo'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -29,10 +67,7 @@ body{
     box-shadow:0 8px 25px rgba(0,0,0,0.1);
 }
 h2{text-align:center;}
-.item{
-    border-bottom:1px solid #ddd;
-    padding:10px 0;
-}
+.item{border-bottom:1px solid #ddd;padding:10px 0;}
 button{
     margin-top:20px;
     width:100%;
@@ -52,12 +87,12 @@ button{
 <div class="container">
     <h2>📦 Orden de Entrega</h2>
 
-    <p><b>Código:</b> <?= $orden['codigo'] ?></p>
-    <p><b>Fecha:</b> <?= $orden['fecha'] ?></p>
+    <p><b>Código:</b> <?= htmlspecialchars($orden['codigo']) ?></p>
+    <p><b>Fecha:</b> <?= htmlspecialchars($orden['fecha']) ?></p>
     <p><b>Cliente:</b> <?= htmlspecialchars($orden['cliente']) ?></p>
     <p><b>Teléfono:</b> <?= htmlspecialchars($orden['telefono']) ?></p>
     <p><b>Dirección:</b> <?= nl2br(htmlspecialchars($orden['direccion'])) ?></p>
-    <p><b>Estado:</b> <?= $orden['estado'] ?></p>
+    <p><b>Estado:</b> <?= htmlspecialchars($orden['estado'] ?? 'Pendiente') ?></p>
 
     <h3>🛒 Productos</h3>
     <?php foreach($orden['items'] as $item): ?>
